@@ -7,18 +7,22 @@ const API_URL = 'http://localhost:5000';
 
 const AttendanceScreen = () => {
   const [userId, setUserId] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [markingAttendance, setMarkingAttendance] = useState<boolean>(false);
   const [attendanceMessage, setAttendanceMessage] = useState<string | null>(null);
+  const [attendanceMarked, setAttendanceMarked] = useState<boolean>(false); 
 
   useEffect(() => {
     const fetchAuthData = async () => {
       try {
         const storedUserId = await AsyncStorage.getItem('userId');
+        const storedUsername = await AsyncStorage.getItem('username');
         const storedToken = await AsyncStorage.getItem('authToken');
         if (storedUserId) setUserId(storedUserId);
+        if (storedUsername) setUsername(storedUsername);
         if (storedToken) setAuthToken(storedToken);
       } catch (error) {
         console.error('Error fetching auth data:', error);
@@ -57,7 +61,7 @@ const AttendanceScreen = () => {
 
   const markAttendance = async () => {
     setMarkingAttendance(true);
-    setAttendanceMessage(null); // Clear previous messages
+    setAttendanceMessage(null);
 
     if (!location || !userId || !authToken) {
       setAttendanceMessage('Missing required data. Ensure location and authentication details are available.');
@@ -83,12 +87,15 @@ const AttendanceScreen = () => {
 
       if (response.ok) {
         setAttendanceMessage(data.message || 'Attendance marked successfully!');
+        setAttendanceMarked(true); 
       } else {
         setAttendanceMessage(data.message || 'Failed to mark attendance.');
+        setAttendanceMarked(false); 
       }
     } catch (error) {
       console.error('Error sending attendance:', error);
       setAttendanceMessage('Error: Failed to mark attendance. Please try again.');
+      setAttendanceMarked(false);
     } finally {
       setMarkingAttendance(false);
     }
@@ -122,6 +129,9 @@ const AttendanceScreen = () => {
           <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1E293B' }}>User ID:</Text>
           <Text style={{ fontSize: 14, color: '#475569', marginBottom: 10 }}>{userId}</Text>
 
+          <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1E293B' }}>User Name:</Text>
+          <Text style={{ fontSize: 14, color: '#475569', marginBottom: 10 }}>{username}</Text>
+
           <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1E293B' }}>Location:</Text>
           {location ? (
             <Text style={{ fontSize: 14, color: '#475569', marginBottom: 20 }}>
@@ -135,7 +145,7 @@ const AttendanceScreen = () => {
             title="Mark Attendance"
             onPress={markAttendance}
             color="#2563EB"
-            disabled={markingAttendance}
+            disabled={attendanceMarked}
           />
 
           {markingAttendance && (
@@ -148,7 +158,7 @@ const AttendanceScreen = () => {
                 marginTop: 15,
                 fontSize: 14,
                 textAlign: 'center',
-                color: attendanceMessage.toLowerCase().includes('success') ? '#16A34A' : '#DC2626',
+                color: attendanceMarked ? '#16A34A' : '#DC2626',
               }}
             >
               {attendanceMessage}

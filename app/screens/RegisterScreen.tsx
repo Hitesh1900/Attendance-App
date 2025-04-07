@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Button, TextInput, StyleSheet } from 'react-native';
 import axios from 'axios';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = 'http://localhost:5000';
 
@@ -27,6 +28,8 @@ function RegisterScreen({ navigation }: any) {
       });
 
       if (response.status === 201) {
+      
+        await AsyncStorage.setItem('username', name);
         navigation.navigate('Home');
       } else {
         setErrorMessage('Registration failed. Please try again.');
@@ -78,7 +81,11 @@ function RegisterScreen({ navigation }: any) {
       <Button title="REGISTER" onPress={handleRegister} color="#1E88E5" />
 
       <View style={{ marginTop: 10 }}>
-        <Button title="Already have an account? Login" onPress={() => navigation.navigate('Home')} color="#757575" />
+        <Button
+          title="Already have an account? Login"
+          onPress={() => navigation.navigate('Home')}
+          color="#757575"
+        />
       </View>
     </View>
   );

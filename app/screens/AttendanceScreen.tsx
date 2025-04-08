@@ -89,7 +89,7 @@ const AttendanceScreen = () => {
         setAttendanceMessage(data.message || 'Attendance marked successfully!');
         setAttendanceMarked(true); 
       } else {
-        setAttendanceMessage(data.message || 'Failed to mark attendance');
+        setAttendanceMessage(data.message || 'You are not in the range of 10 meters to the Office');
         setAttendanceMarked(false); 
       }
     } catch (error) {

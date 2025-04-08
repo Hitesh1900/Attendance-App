@@ -53,7 +53,7 @@ function HomeScreen({ navigation }: HomeScreenProps) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>LOGIN</Text>
+      <Text style={styles.title}>LOG IN</Text>
 
       {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
 
@@ -63,6 +63,7 @@ function HomeScreen({ navigation }: HomeScreenProps) {
           style={styles.input}
           placeholder="Enter email"
           value={email}
+          
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"

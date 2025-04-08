@@ -3,29 +3,47 @@ import { Attendance } from "../models/index.js";
 export const markAttendance = async (req, res) => {
   try {
     const { userId, latitude, longitude } = req.body;
-    const officeLat = 17.732501, officeLng = 83.321139; 
 
-    const distance = Math.sqrt((latitude - officeLat) ** 2 + (longitude - officeLng) ** 2) * 111000;
-    if (distance > 10) return res.status(400).json({ error: "User is not within the 10-meter range" });
+    const officeLocations = [
+      { name: "Main Office", lat: 17.732501, lng: 83.321139 },
+      { name: "Branch A", lat: 21.734321, lng: 21.734321 },
+      { name: "Branch B", lat: 87.730100, lng: 33.322200 },
+      { name: "Remote Office", lat: 10.733000, lng: 83.318000 },
+    ];
 
-    const attendance = await Attendance.create({ userId, latitude, longitude });
-    res.json({ message: "Attendance marked", attendance });
+    const getDistance = (lat1, lng1, lat2, lng2) => {
+      return Math.sqrt((lat1 - lat2) ** 2 + (lng1 - lng2) ** 2) * 111000;
+    };
+
+    const nearbyLocation = officeLocations.find(loc => {
+      const distance = getDistance(latitude, longitude, loc.lat, loc.lng);
+      return distance <= 10;
+    });
+
+
+    if (!nearbyLocation) {
+      return res.status(400).json({
+        error: "User is not within the 10-meter range of any office location"
+      });
+    }
+
+    const attendance = await Attendance.create({
+      userId,
+      latitude,
+      longitude
+    });
+
+    res.json({
+      message: `Attendance marked successfully at ${nearbyLocation.name}`,
+      location: nearbyLocation.name,
+      attendance
+    });
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Attendance marking error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

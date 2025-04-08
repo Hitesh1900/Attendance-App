@@ -89,7 +89,7 @@ const AttendanceScreen = () => {
         setAttendanceMessage(data.message || 'Attendance marked successfully!');
         setAttendanceMarked(true); 
       } else {
-        setAttendanceMessage(data.message || 'Failed to mark attendance.');
+        setAttendanceMessage(data.message || 'Failed to mark attendance');
         setAttendanceMarked(false); 
       }
     } catch (error) {
@@ -158,6 +158,7 @@ const AttendanceScreen = () => {
                 marginTop: 15,
                 fontSize: 14,
                 textAlign: 'center',
+                fontWeight: 'bold',
                 color: attendanceMarked ? '#16A34A' : '#DC2626',
               }}
             >

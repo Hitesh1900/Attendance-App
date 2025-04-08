@@ -4,7 +4,7 @@ import { Alert } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 
-// Define types for navigation
+
 type RootStackParamList = {
   Home: undefined;
   Register: undefined;

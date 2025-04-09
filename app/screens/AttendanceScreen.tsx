@@ -1,11 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, ActivityIndicator } from 'react-native';
+import { View, Text, Button, ActivityIndicator, StyleSheet } from 'react-native';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { StackNavigationProp } from '@react-navigation/stack';
+
+type RootStackParamList = {
+  Home: undefined;
+  Register: undefined;
+  Attendance: { userId: string };
+  History: { userId: string };
+  Profile: { userId: string };
+};
+
+type AttendanceScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 const API_URL = 'http://localhost:5000';
 
 const AttendanceScreen = () => {
+  const navigation = useNavigation<AttendanceScreenNavigationProp>();
+
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
@@ -13,7 +28,8 @@ const AttendanceScreen = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [markingAttendance, setMarkingAttendance] = useState<boolean>(false);
   const [attendanceMessage, setAttendanceMessage] = useState<string | null>(null);
-  const [attendanceMarked, setAttendanceMarked] = useState<boolean>(false); 
+  const [attendanceMarked, setAttendanceMarked] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<'Attendance' | 'History' | 'Profile'>('Attendance');
 
   useEffect(() => {
     const fetchAuthData = async () => {
@@ -87,10 +103,10 @@ const AttendanceScreen = () => {
 
       if (response.ok) {
         setAttendanceMessage(data.message || 'Attendance marked successfully!');
-        setAttendanceMarked(true); 
+        setAttendanceMarked(true);
       } else {
         setAttendanceMessage(data.message || 'You are not in the range of 10 meters to the Office');
-        setAttendanceMarked(false); 
+        setAttendanceMarked(false);
       }
     } catch (error) {
       console.error('Error sending attendance:', error);
@@ -102,43 +118,27 @@ const AttendanceScreen = () => {
   };
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC', padding: 20 }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1E293B', marginBottom: 10 }}>
-        GRAB YOUR ATTENDANCE
-      </Text>
-      <Text style={{ fontSize: 16, color: '#475569', marginBottom: 20, textAlign: 'center' }}>
-        Your location will be used to mark attendance.
-      </Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>GRAB YOUR ATTENDANCE</Text>
+      <Text style={styles.subtitle}>Your location will be used to mark attendance.</Text>
 
       {loading ? (
         <ActivityIndicator size="large" color="#2563EB" />
       ) : (
-        <View
-          style={{
-            width: '100%',
-            backgroundColor: 'white',
-            padding: 20,
-            borderRadius: 10,
-            shadowColor: '#000',
-            shadowOpacity: 0.1,
-            shadowRadius: 5,
-            shadowOffset: { width: 0, height: 2 },
-            elevation: 3,
-          }}
-        >
-          <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1E293B' }}>User ID:</Text>
-          <Text style={{ fontSize: 14, color: '#475569', marginBottom: 10 }}>{userId}</Text>
+        <View style={styles.card}>
+          <Text style={styles.label}>User ID:</Text>
+          <Text style={styles.value}>{userId}</Text>
 
-          <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1E293B' }}>User Name:</Text>
-          <Text style={{ fontSize: 14, color: '#475569', marginBottom: 10 }}>{username}</Text>
+          <Text style={styles.label}>User Name:</Text>
+          <Text style={styles.value}>{username}</Text>
 
-          <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1E293B' }}>Location:</Text>
+          <Text style={styles.label}>Location:</Text>
           {location ? (
-            <Text style={{ fontSize: 14, color: '#475569', marginBottom: 20 }}>
+            <Text style={styles.value}>
               Latitude: {location.latitude}, Longitude: {location.longitude}
             </Text>
           ) : (
-            <Text style={{ fontSize: 14, color: '#EF4444', marginBottom: 20 }}>Location not available</Text>
+            <Text style={[styles.value, { color: '#EF4444' }]}>Location not available</Text>
           )}
 
           <Button
@@ -148,9 +148,7 @@ const AttendanceScreen = () => {
             disabled={attendanceMarked}
           />
 
-          {markingAttendance && (
-            <ActivityIndicator size="small" color="#2563EB" style={{ marginTop: 10 }} />
-          )}
+          {markingAttendance && <ActivityIndicator size="small" color="#2563EB" style={{ marginTop: 10 }} />}
 
           {attendanceMessage && (
             <Text
@@ -167,8 +165,122 @@ const AttendanceScreen = () => {
           )}
         </View>
       )}
+
+      <View style={styles.bottomNav}>
+        <View style={styles.iconContainer}>
+          <Ionicons
+            name={activeTab === 'Attendance' ? 'home' : 'home-outline'}
+            size={28}
+            color={activeTab === 'Attendance' ? '#2563EB' : '#333'}
+            onPress={() => {
+              setActiveTab('Attendance');
+              navigation.navigate('Attendance', { userId: userId || '' });
+            }}
+          />
+          <Text style={[styles.iconLabel, activeTab === 'Attendance' && { color: '#2563EB', fontWeight: 'bold' }]}>
+            Home
+          </Text>
+        </View>
+
+        <View style={styles.iconContainer}>
+          <Ionicons
+            name={activeTab === 'History' ? 'time' : 'time-outline'}
+            size={28}
+            color={activeTab === 'History' ? '#2563EB' : '#333'}
+            onPress={() => {
+              setActiveTab('History');
+              navigation.navigate('History', { userId: userId || '' });
+            }}
+          />
+          <Text style={[styles.iconLabel, activeTab === 'History' && { color: '#2563EB', fontWeight: 'bold' }]}>
+            History
+          </Text>
+        </View>
+
+        <View style={styles.iconContainer}>
+          <Ionicons
+            name={activeTab === 'Profile' ? 'person-circle' : 'person-circle-outline'}
+            size={28}
+            color={activeTab === 'Profile' ? '#2563EB' : '#333'}
+            onPress={() => {
+              setActiveTab('Profile');
+              navigation.navigate('Profile', { userId: userId || '' });
+            }}
+          />
+          <Text style={[styles.iconLabel, activeTab === 'Profile' && { color: '#2563EB', fontWeight: 'bold' }]}>
+            Profile
+          </Text>
+        </View>
+      </View>
     </View>
   );
 };
 
 export default AttendanceScreen;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    padding: 20,
+    paddingBottom: 80,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1E293B',
+    marginTop: 40,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#475569',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  card: {
+    width: '100%',
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1E293B',
+  },
+  value: {
+    fontSize: 14,
+    color: '#475569',
+    marginBottom: 10,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconLabel: {
+    fontSize: 12,
+    color: '#333',
+    marginTop: 4,
+  },
+  
+});

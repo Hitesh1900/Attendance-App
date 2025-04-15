@@ -28,8 +28,6 @@ function RegisterScreen({ navigation }: any) {
       });
 
       if (response.status === 201) {
-      
-        await AsyncStorage.setItem('username', name);
         navigation.navigate('Home');
       } else {
         setErrorMessage('Registration failed. Please try again.');

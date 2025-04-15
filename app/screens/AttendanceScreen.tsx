@@ -5,6 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
+import * as ImagePicker from 'expo-image-picker';
+import { Camera } from 'expo-camera';
 
 type RootStackParamList = {
   Home: undefined;
@@ -33,16 +35,12 @@ const AttendanceScreen = () => {
 
   useEffect(() => {
     const fetchAuthData = async () => {
-      try {
-        const storedUserId = await AsyncStorage.getItem('userId');
-        const storedUsername = await AsyncStorage.getItem('username');
-        const storedToken = await AsyncStorage.getItem('authToken');
-        if (storedUserId) setUserId(storedUserId);
-        if (storedUsername) setUsername(storedUsername);
-        if (storedToken) setAuthToken(storedToken);
-      } catch (error) {
-        console.error('Error fetching auth data:', error);
-      }
+      const storedUserId = await AsyncStorage.getItem('userId');
+      const storedUsername = await AsyncStorage.getItem('username');
+      const storedToken = await AsyncStorage.getItem('authToken');
+      if (storedUserId) setUserId(storedUserId);
+      if (storedUsername) setUsername(storedUsername);
+      if (storedToken) setAuthToken(storedToken);
     };
 
     const getLocation = async () => {
@@ -54,18 +52,10 @@ const AttendanceScreen = () => {
       }
 
       try {
-        const loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-        });
-
-        if (loc && loc.coords) {
-          setLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
-        } else {
-          setAttendanceMessage('Unable to get location.');
-        }
-      } catch (error) {
-        console.error('Error fetching location:', error);
-        setAttendanceMessage('Error fetching location. Try again.');
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        setLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+      } catch {
+        setAttendanceMessage('Unable to fetch location.');
       } finally {
         setLoading(false);
       }
@@ -78,40 +68,79 @@ const AttendanceScreen = () => {
   const markAttendance = async () => {
     setMarkingAttendance(true);
     setAttendanceMessage(null);
-
-    if (!location || !userId || !authToken) {
-      setAttendanceMessage('Missing required data. Ensure location and authentication details are available.');
-      setMarkingAttendance(false);
-      return;
-    }
-
+    
     try {
-      const response = await fetch(`${API_URL}/api/attendance/mark`, {
+      const storedUserId = await AsyncStorage.getItem('userId');
+      const storedToken = await AsyncStorage.getItem('authToken');
+      if (!storedUserId || !storedToken) {
+        setAttendanceMessage('Authentication error. Please log in again.');
+        setMarkingAttendance(false);
+        return;
+      }
+
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+      if (permissionResult.status !== 'granted') {
+        setAttendanceMessage('Camera permission is required.');
+        setMarkingAttendance(false);
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        cameraType: ImagePicker.CameraType.front,
+        base64: true,
+        allowsEditing: true,
+        quality: 0.5,
+      });
+
+      if (result.canceled || !result.assets || !result.assets[0].base64) {
+        setAttendanceMessage('Photo capture cancelled.');
+        setMarkingAttendance(false);
+        return;
+      }
+
+      const base64Image = result.assets[0].base64;
+
+      const faceResponse = await fetch(`${API_URL}/api/face/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
+          Authorization: `Bearer ${storedToken}`,
+        },
+        body: JSON.stringify({ image: base64Image }),
+      });
+
+      const faceData = await faceResponse.json();
+      if (!faceResponse.ok || faceData.status !== 'success') {
+        setAttendanceMessage(faceData.message || 'Face verification failed.');
+        setMarkingAttendance(false);
+        return;
+      }
+
+
+      const loc = await Location.getCurrentPositionAsync({});
+      const attendanceResponse = await fetch(`${API_URL}/api/attendance/mark`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${storedToken}`,
         },
         body: JSON.stringify({
-          userId,
-          latitude: location.latitude,
-          longitude: location.longitude,
+          userId: storedUserId,
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
         }),
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setAttendanceMessage(data.message || 'Attendance marked successfully!');
+      const attendanceData = await attendanceResponse.json();
+      if (attendanceResponse.ok) {
+        setAttendanceMessage(attendanceData.message || 'Attendance marked!');
         setAttendanceMarked(true);
       } else {
-        setAttendanceMessage(data.message || 'You are not in the range of 10 meters to the Office');
-        setAttendanceMarked(false);
+        setAttendanceMessage(attendanceData.message || 'Failed to mark attendance.');
       }
-    } catch (error) {
-      console.error('Error sending attendance:', error);
-      setAttendanceMessage('Error: Failed to mark attendance. Please try again.');
-      setAttendanceMarked(false);
+    } catch (err) {
+      console.error(err);
+      setAttendanceMessage('Something went wrong.');
     } finally {
       setMarkingAttendance(false);
     }
@@ -149,7 +178,6 @@ const AttendanceScreen = () => {
           />
 
           {markingAttendance && <ActivityIndicator size="small" color="#2563EB" style={{ marginTop: 10 }} />}
-
           {attendanceMessage && (
             <Text
               style={{
@@ -282,5 +310,4 @@ const styles = StyleSheet.create({
     color: '#333',
     marginTop: 4,
   },
-  
 });

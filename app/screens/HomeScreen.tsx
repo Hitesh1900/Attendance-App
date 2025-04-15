@@ -41,6 +41,7 @@ function HomeScreen({ navigation }: HomeScreenProps) {
       if (response.ok) {
         await AsyncStorage.setItem('authToken', data.token);
         await AsyncStorage.setItem('userId', data.id);
+        await AsyncStorage.setItem('username',data.name);
 
         navigation.navigate('Attendance', { userId: data.id });
       } else {

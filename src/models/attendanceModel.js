@@ -6,6 +6,9 @@ export default (sequelize) => {
     userId: { type: DataTypes.UUID, allowNull: false },
     latitude: { type: DataTypes.FLOAT, allowNull: false },
     longitude: { type: DataTypes.FLOAT, allowNull: false },
+  }, {
+    freezeTableName: true, 
+    tableName: "attendances", 
   });
 
   return Attendance;

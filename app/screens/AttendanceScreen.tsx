@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Button, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, Button, ActivityIndicator, StyleSheet, Alert, Image } from 'react-native';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
-import * as ImagePicker from 'expo-image-picker';
-import { Camera } from 'expo-camera';
+import Webcam from 'react-webcam';
+import { freezeEnabled } from 'react-native-screens';
 
 type RootStackParamList = {
   Home: undefined;
@@ -22,6 +22,8 @@ const API_URL = 'http://localhost:5000';
 
 const AttendanceScreen = () => {
   const navigation = useNavigation<AttendanceScreenNavigationProp>();
+  
+  const webcamRef = useRef<Webcam | null>(null);
 
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
@@ -32,6 +34,8 @@ const AttendanceScreen = () => {
   const [attendanceMessage, setAttendanceMessage] = useState<string | null>(null);
   const [attendanceMarked, setAttendanceMarked] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'Attendance' | 'History' | 'Profile'>('Attendance');
+  const [photoTaken, setPhotoTaken] = useState<string | null>(null); 
+  const [cameraOpen, setCameraOpen] = useState<boolean>(false); 
 
   useEffect(() => {
     const fetchAuthData = async () => {
@@ -66,9 +70,15 @@ const AttendanceScreen = () => {
   }, []);
 
   const markAttendance = async () => {
+    if (!photoTaken) {
+      setAttendanceMessage('Please capture your photo for face verification.');
+      return;
+    }
+
     setMarkingAttendance(true);
     setAttendanceMessage(null);
-    
+    setCameraOpen(false); 
+
     try {
       const storedUserId = await AsyncStorage.getItem('userId');
       const storedToken = await AsyncStorage.getItem('authToken');
@@ -78,35 +88,13 @@ const AttendanceScreen = () => {
         return;
       }
 
-      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-      if (permissionResult.status !== 'granted') {
-        setAttendanceMessage('Camera permission is required.');
-        setMarkingAttendance(false);
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        cameraType: ImagePicker.CameraType.front,
-        base64: true,
-        allowsEditing: true,
-        quality: 0.5,
-      });
-
-      if (result.canceled || !result.assets || !result.assets[0].base64) {
-        setAttendanceMessage('Photo capture cancelled.');
-        setMarkingAttendance(false);
-        return;
-      }
-
-      const base64Image = result.assets[0].base64;
-
       const faceResponse = await fetch(`${API_URL}/api/face/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${storedToken}`,
         },
-        body: JSON.stringify({ image: base64Image }),
+        body: JSON.stringify({ image: photoTaken }), 
       });
 
       const faceData = await faceResponse.json();
@@ -116,8 +104,8 @@ const AttendanceScreen = () => {
         return;
       }
 
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
 
-      const loc = await Location.getCurrentPositionAsync({});
       const attendanceResponse = await fetch(`${API_URL}/api/attendance/mark`, {
         method: 'POST',
         headers: {
@@ -133,16 +121,25 @@ const AttendanceScreen = () => {
 
       const attendanceData = await attendanceResponse.json();
       if (attendanceResponse.ok) {
-        setAttendanceMessage(attendanceData.message || 'Attendance marked!');
+        setAttendanceMessage(attendanceData.message || 'Attendance marked successfully!');
         setAttendanceMarked(true);
       } else {
         setAttendanceMessage(attendanceData.message || 'Failed to mark attendance.');
       }
     } catch (err) {
       console.error(err);
-      setAttendanceMessage('Something went wrong.');
+      setAttendanceMessage('Something went wrong. Try again.');
     } finally {
       setMarkingAttendance(false);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (webcamRef.current) {
+      const screenshot = webcamRef.current.getScreenshot();
+      if (screenshot) {
+        setPhotoTaken(screenshot);
+      }
     }
   };
 
@@ -170,11 +167,26 @@ const AttendanceScreen = () => {
             <Text style={[styles.value, { color: '#EF4444' }]}>Location not available</Text>
           )}
 
+          {cameraOpen && (
+            <Webcam
+              audio={false}
+              height={240}
+              width="100%"
+              screenshotFormat="image/jpeg"
+              videoConstraints={{ facingMode: 'user' }}
+              ref={webcamRef}
+            />
+          )}
+
           <Button
             title="Mark Attendance"
-            onPress={markAttendance}
+            onPress={() => {
+              setCameraOpen(true); 
+              capturePhoto();
+              markAttendance();
+            }}
             color="#2563EB"
-            disabled={attendanceMarked}
+            disabled={attendanceMarked || markingAttendance}
           />
 
           {markingAttendance && <ActivityIndicator size="small" color="#2563EB" style={{ marginTop: 10 }} />}
@@ -205,7 +217,7 @@ const AttendanceScreen = () => {
               navigation.navigate('Attendance', { userId: userId || '' });
             }}
           />
-          <Text style={[styles.iconLabel, activeTab === 'Attendance' && { color: '#2563EB', fontWeight: 'bold' }]}>
+          <Text style={[styles.iconLabel, activeTab === 'Attendance' && { color: '#2563EB', fontWeight: 'bold' }]} >
             Home
           </Text>
         </View>
@@ -220,7 +232,7 @@ const AttendanceScreen = () => {
               navigation.navigate('History', { userId: userId || '' });
             }}
           />
-          <Text style={[styles.iconLabel, activeTab === 'History' && { color: '#2563EB', fontWeight: 'bold' }]}>
+          <Text style={[styles.iconLabel, activeTab === 'History' && { color: '#2563EB', fontWeight: 'bold' }]} >
             History
           </Text>
         </View>
@@ -235,7 +247,7 @@ const AttendanceScreen = () => {
               navigation.navigate('Profile', { userId: userId || '' });
             }}
           />
-          <Text style={[styles.iconLabel, activeTab === 'Profile' && { color: '#2563EB', fontWeight: 'bold' }]}>
+          <Text style={[styles.iconLabel, activeTab === 'Profile' && { color: '#2563EB', fontWeight: 'bold' }]} >
             Profile
           </Text>
         </View>
@@ -274,18 +286,17 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
   label: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1E293B',
+    color: '#4B5563',
   },
   value: {
-    fontSize: 14,
-    color: '#475569',
+    fontSize: 16,
+    color: '#1F2937',
     marginBottom: 10,
   },
   bottomNav: {
@@ -293,7 +304,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
     backgroundColor: '#ffffff',
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
     position: 'absolute',
@@ -303,11 +314,10 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
   },
   iconLabel: {
     fontSize: 12,
     color: '#333',
-    marginTop: 4,
+    marginTop: 5,
   },
 });

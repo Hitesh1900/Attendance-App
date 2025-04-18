@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Button,
-  TouchableOpacity,
-  useColorScheme,
-  Alert,
-} from 'react-native';
+import {View,Text,StyleSheet,Button,TouchableOpacity,useColorScheme,Alert,} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
@@ -107,8 +99,12 @@ const ProfileScreen = ({ route }: Props) => {
           <Text style={styles.buttonText}>Update Profile</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.button, { backgroundColor: '#EF4444' }]} onPress={handleLogout}>
-          <Text style={styles.buttonText}>Log out</Text>
+        <TouchableOpacity style={styles.button} onPress={() => Alert.alert('Change Password', 'Password change feature coming soon.')}>
+          <Text style={styles.buttonText}>Change Password</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.button, { backgroundColor: '#EF4444',borderColor:'#FFF', }]} onPress={handleLogout}>
+          <Text style={[styles.buttonText, { color: '#FFF' }]}>Log out</Text>
         </TouchableOpacity>
       </View>
 
@@ -230,17 +226,18 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   button: {
-    backgroundColor: '#2563EB',
+    borderWidth: 2,
+    borderColor: '#2563EB',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: 'center',
     alignSelf: 'center',
-    minWidth: 160, 
-  },
+    minWidth: 180,
+},
   
   buttonText: {
-    color: '#fff',
+    color: '#2563EB',
     fontSize: 16,
     fontWeight: 'bold',
   },
